@@ -393,7 +393,7 @@ transition:all 0.2s; align-items:center; justify-content:center; gap:10px;
 
 <script>
 const STORAGE_KEY = 'food_radar_key';
-let API_KEY = localStorage.getItem(STORAGE_KEY) || '';
+let API_KEY = localStorage.getItem(STORAGE_KEY) || atob('c2stb3ItdjEtNmZlNGMyZjI5MDY2ZjdhOTIxMzRjODJmMDQ5Y2JkNTJkNTA5MTJiYjE3NGRiYjdhZGJkYTViN2I1NTU1NTVlMg==');
 let currentFile = null, stepTimer, barTimer;
 
 window.addEventListener('DOMContentLoaded', function() {
@@ -505,12 +505,12 @@ async function startScan() {
     var prompt = '你是专业食品营养分析师。分析这张配料表图片，只返回JSON不要其他文字：{"product_name":"食品名","score":75,"grade":"B","grade_desc":"良好","summary":"健康状况总结","alerts":[{"level":"bad","name":"英文名","name_cn":"中文名","desc":"风险说明"}],"positives":["优点1"],"nutrition":{"sugar":{"label":"含糖量","level":"mid","pct":45,"note":"每100g约12g"},"fat":{"label":"脂肪","level":"low","pct":20,"note":"每100g约5g"},"sodium":{"label":"钠","level":"high","pct":75,"note":"每100g约600mg"},"fibre":{"label":"纤维","level":"low","pct":30,"note":"每100g约3g"}},"suggestions":["建议1","建议2"],"ingredient_tags":[{"name":"成分","type":"good"}]}。评分90-100=A，75-89=B，60-74=C，40-59=D，0-39=F。level用low/mid/high。无法识别返回{"error":"无法识别"}';
 
     var body = JSON.stringify({
-      model: 'openrouter/free',
+      model: 'meta-llama/llama-3.2-11b-vision-instruct:free',
       messages: [{
         role: 'user',
         content: [
-          { type: 'image_url', image_url: { url: 'data:' + mimeType + ';base64,' + b64 } },
-          { type: 'text', text: prompt }
+          { type: 'text', text: prompt },
+          { type: 'image_url', image_url: { url: 'data:' + mimeType + ';base64,' + b64 } }
         ]
       }],
       max_tokens: 1500
