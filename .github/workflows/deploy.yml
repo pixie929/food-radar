@@ -1,0 +1,22 @@
+name: Deploy with Secrets
+on:
+  push:
+    branches: [ main ] # 当你向 main 分支提交代码时触发
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Replace API Key Placeholder
+        run: |
+          # 将 index.html 里的占位符替换为保存在 GitHub Secrets 里的真实 Key
+          sed -i "s/PROD_API_KEY_PLACEHOLDER/${{ secrets.GEMINI_API_KEY }}/g" index.html
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: . # 部署当前文件夹下的所有文件
+          branch: gh-pages # 将处理后的代码发到一个名为 gh-pages 的隐藏分支运行
