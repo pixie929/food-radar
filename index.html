@@ -32,7 +32,7 @@ body { max-width:430px; margin:0 auto; min-height:100vh; }
 
 /* ── API Key Setup Screen ── */
 #setup-screen {
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  display:none; flex-direction:column; align-items:center; justify-content:center;
   min-height:100vh; padding:30px 24px;
   background: radial-gradient(ellipse at top, #0d2018 0%, var(--bg) 70%);
 }
@@ -75,7 +75,7 @@ body { max-width:430px; margin:0 auto; min-height:100vh; }
 .privacy-note { margin-top:16px; font-size:10.5px; color:var(--text-muted); text-align:center; line-height:1.6; }
 
 /* ── Main App ── */
-#app-screen { display:none; }
+#app-screen { display:block; }
 
 .header { padding:20px 20px 0; }
 .header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
@@ -390,12 +390,8 @@ let stepTimer, barTimer;
 
 // ── Init ─────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
-  // Key pre-loaded, go straight to app
+  // Key is pre-loaded, skip setup screen entirely
   showApp();
-  document.getElementById('api-key-input').addEventListener('input', e => {
-    const val = e.target.value.trim();
-    document.getElementById('start-btn').disabled = val.length < 20;
-  });
 });
 
 function toggleVis() {
