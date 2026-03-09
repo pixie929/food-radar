@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>海外超市配料助手 | 博主推荐版</title>
+    <title>海外超市配料助手 | AI 营养师</title>
     <style>
         :root { --primary: #07c160; --bg: #f7f7f7; --text: #333; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; display: flex; justify-content: center; }
-        .card { background: white; width: 100%; max-width: 500px; min-height: 100vh; padding: 25px; box-sizing: border-box; shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .card { background: white; width: 100%; max-width: 500px; min-height: 100vh; padding: 25px; box-sizing: border-box; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .header { text-align: center; margin-bottom: 20px; }
         .header h1 { color: var(--primary); font-size: 24px; margin: 0; }
         .header p { color: #888; font-size: 13px; margin-top: 5px; }
         
-        #video-container { width: 100%; aspect-ratio: 1/1; background: #000; border-radius: 16px; overflow: hidden; position: relative; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); }
+        #video-container { width: 100%; aspect-ratio: 1/1; background: #000; border-radius: 16px; overflow: hidden; position: relative; }
         video { width: 100%; height: 100%; object-fit: cover; }
         
         .btn { display: block; width: 100%; padding: 16px; margin-top: 20px; border: none; border-radius: 12px; font-size: 17px; font-weight: bold; cursor: pointer; transition: 0.2s; -webkit-tap-highlight-color: transparent; }
@@ -33,7 +33,7 @@
 <div class="card">
     <div class="header">
         <h1>🛒 超市配料表助手</h1>
-        <p>拍照翻译配料 · AI 深度分析健康度</p>
+        <p>拍照识别成分 · AI 深度分析健康度</p>
     </div>
 
     <div id="video-container">
@@ -49,19 +49,15 @@
     <div id="result-box"></div>
 
     <div class="footer">
-        由美食博主打造 | 仅供参考，不作为医疗建议
+        由美食生活博主打造 | 仅供参考，不作为医疗建议
     </div>
 </div>
 
 <canvas id="canvas" style="display:none;"></canvas>
 
 <script>
-    // ==========================================
-    // ⚠️ 在下方填入你的 Google Gemini API Key
-    // ==========================================
-    // 注意：这里我们写一个特殊的占位符，稍后由 GitHub 替换
-const API_KEY = 'PROD_API_KEY_PLACEHOLDER'; 
-
+    // 这里是占位符，由 GitHub Actions 自动替换
+    const API_KEY = 'PROD_API_KEY_PLACEHOLDER'; 
 
     const video = document.getElementById('video');
     const captureBtn = document.getElementById('capture');
@@ -69,7 +65,6 @@ const API_KEY = 'PROD_API_KEY_PLACEHOLDER';
     const loading = document.getElementById('loading');
     const canvas = document.getElementById('canvas');
 
-    // 启动相机
     async function startCamera() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -77,31 +72,27 @@ const API_KEY = 'PROD_API_KEY_PLACEHOLDER';
             });
             video.srcObject = stream;
         } catch (err) {
-            alert("无法打开摄像头，请确保使用 HTTPS 访问并授予摄像头权限。");
+            alert("无法打开摄像头，请确保使用 HTTPS 访问。");
         }
     }
     startCamera();
 
-    // 点击拍照分析
     captureBtn.onclick = async () => {
-        if (API_KEY === 'YOUR_API_KEY_HERE') {
-            alert("请先在代码中修改并填入你的 API Key！");
+        if (API_KEY.includes('PLACEHOLDER')) {
+            alert("⚠️ 部署配置中：请稍等 1 分钟让 Actions 完成构建。");
             return;
         }
 
-        // 1. 抓取图像
         const context = canvas.getContext('2d');
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         context.drawImage(video, 0, 0);
         const base64Image = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
 
-        // 2. UI 状态切换
         loading.style.display = 'block';
         resultBox.style.display = 'none';
         captureBtn.disabled = true;
 
-        // 3. 构建请求发送给 Gemini
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
         
         try {
@@ -111,7 +102,7 @@ const API_KEY = 'PROD_API_KEY_PLACEHOLDER';
                 body: JSON.stringify({
                     contents: [{
                         parts: [
-                            { text: "请分析图片中的英文配料表。要求：1.用中文回答。2.给出1-10的健康评分。3.列出好成分和坏成分（特别是添加剂）。4.给出一句幽默的小红书风格文案。5.不要使用Markdown语法，直接输出文字。" },
+                            { text: "请分析图片中的英文配料表。要求：1.用中文回答。2.给出1-10的健康评分。3.列出核心好/坏成分。4.给出一句幽默的小红书风格文案。" },
                             { inline_data: { mime_type: "image/jpeg", data: base64Image } }
                         ]
                     }]
@@ -119,23 +110,15 @@ const API_KEY = 'PROD_API_KEY_PLACEHOLDER';
             });
 
             const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
 
-            if (data.error) {
-                throw new Error(data.error.message || "未知错误");
-            }
-
-            // 提取 AI 生成的文本
-            const resultText = data.candidates[0].content.parts[0].text;
-            
-            // 展示结果
             loading.style.display = 'none';
-            resultBox.innerText = resultText;
+            resultBox.innerText = data.candidates[0].content.parts[0].text;
             resultBox.style.display = 'block';
             captureBtn.disabled = false;
 
         } catch (error) {
-            console.error(error);
-            alert("⚠️ 分析失败了！\n原因：" + error.message + "\n\n请检查 API Key 是否正确或网络是否顺畅。");
+            alert("分析失败: " + error.message);
             loading.style.display = 'none';
             captureBtn.disabled = false;
         }
