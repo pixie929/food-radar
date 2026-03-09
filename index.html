@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>食安雷达 · 配料表扫描</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --neon: #00ff88;
+  --neon-dim: #00cc66;
+  --neon-glow: rgba(0,255,136,0.15);
+  --red: #ff4d6d;
+  --orange: #ff9f1c;
+  --yellow: #ffde59;
+  --bg: #080d0a;
+  --surface: #0f1a13;
+  --surface2: #162019;
+  --border: rgba(0,255,136,0.12);
+  --border-bright: rgba(0,255,136,0.35);
+  --text: #e8f5ee;
+  --text-dim: #6b8f77;
+  --text-muted: #3d5446;
+  --mono: 'Share Tech Mono', monospace;
+  --sans: 'Noto Sans SC', sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body { height:100%; background:var(--bg); color:var(--text); font-family:var(--sans); overflow-x:hidden; }
+body { max-width:430px; margin:0 auto; min-height:100vh; }
+
+/* ── API Key Setup Screen ── */
+#setup-screen {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  min-height:100vh; padding:30px 24px;
+  background: radial-gradient(ellipse at top, #0d2018 0%, var(--bg) 70%);
+}
+.setup-logo { font-size:48px; margin-bottom:16px; }
+.setup-title { font-size:24px; font-weight:900; color:var(--neon); text-align:center; margin-bottom:8px; letter-spacing:-0.5px; text-shadow:0 0 20px rgba(0,255,136,0.4); }
+.setup-sub { font-size:13px; color:var(--text-dim); text-align:center; line-height:1.7; margin-bottom:32px; }
+.setup-card {
+  width:100%; background:var(--surface);
+  border:1px solid var(--border-bright); border-radius:20px; padding:24px;
+}
+.setup-card label { font-size:12px; color:var(--neon); font-family:var(--mono); letter-spacing:1px; display:block; margin-bottom:8px; }
+.key-input-wrap { position:relative; margin-bottom:12px; }
+#api-key-input {
+  width:100%; padding:14px 44px 14px 16px;
+  background:var(--surface2); border:1px solid var(--border-bright);
+  border-radius:12px; color:var(--text); font-size:13px;
+  font-family:var(--mono); outline:none; letter-spacing:1px;
+}
+#api-key-input:focus { border-color:var(--neon); box-shadow:0 0 0 3px rgba(0,255,136,0.1); }
+#api-key-input::placeholder { color:var(--text-muted); letter-spacing:0; }
+.toggle-vis {
+  position:absolute; right:14px; top:50%; transform:translateY(-50%);
+  background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:16px;
+}
+.setup-hint {
+  background:rgba(0,255,136,0.06); border:1px solid var(--border);
+  border-radius:10px; padding:12px; margin-bottom:16px;
+  font-size:11.5px; color:var(--text-dim); line-height:1.7;
+}
+.setup-hint a { color:var(--neon); text-decoration:none; }
+.setup-hint strong { color:var(--text); }
+.start-btn {
+  width:100%; padding:16px; background:var(--neon); color:var(--bg);
+  border:none; border-radius:14px; font-size:15px; font-weight:900;
+  font-family:var(--sans); cursor:pointer; letter-spacing:0.5px;
+  box-shadow:0 0 24px rgba(0,255,136,0.3); transition:all 0.2s;
+}
+.start-btn:active { transform:scale(0.98); }
+.start-btn:disabled { opacity:0.4; cursor:not-allowed; }
+.privacy-note { margin-top:16px; font-size:10.5px; color:var(--text-muted); text-align:center; line-height:1.6; }
+
+/* ── Main App ── */
+#app-screen { display:none; }
+
+.header { padding:20px 20px 0; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.logo { display:flex; align-items:center; gap:10px; }
+.logo-mark {
+  width:38px; height:38px; border:1.5px solid var(--neon); border-radius:10px;
+  display:flex; align-items:center; justify-content:center; font-size:18px;
+  box-shadow:0 0 12px var(--neon-glow), inset 0 0 12px var(--neon-glow);
+  position:relative; overflow:hidden;
+}
+.logo-mark::after {
+  content:''; position:absolute; top:-50%; left:-50%; width:200%; height:200%;
+  background:linear-gradient(135deg, transparent 40%, rgba(0,255,136,0.08) 50%, transparent 60%);
+  animation:shimmer 3s ease-in-out infinite;
+}
+@keyframes shimmer { 0%,100%{transform:translateX(-100%) rotate(45deg);} 50%{transform:translateX(100%) rotate(45deg);} }
+.logo-text { font-size:22px; font-weight:900; color:var(--neon); letter-spacing:-0.5px; text-shadow:0 0 20px rgba(0,255,136,0.4); }
+.logo-sub { font-family:var(--mono); font-size:9px; color:var(--text-dim); letter-spacing:2px; margin-top:1px; }
+.status-pill {
+  display:flex; align-items:center; gap:5px; padding:5px 10px;
+  border:1px solid var(--border-bright); border-radius:50px;
+  font-family:var(--mono); font-size:10px; color:var(--neon); cursor:pointer;
+}
+.status-dot { width:6px; height:6px; background:var(--neon); border-radius:50%; animation:pulse-dot 2s ease-in-out infinite; box-shadow:0 0 6px var(--neon); }
+@keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+.header-line { height:1px; background:linear-gradient(90deg, transparent, var(--border-bright), transparent); margin-top:16px; }
+
+.scan-counter {
+  margin:14px 20px 0; padding:10px 14px; background:var(--surface);
+  border:1px solid var(--border); border-radius:10px;
+  display:flex; align-items:center; justify-content:space-between;
+  font-family:var(--mono); font-size:11px; color:var(--text-dim);
+}
+.counter-val { color:var(--neon); font-size:14px; font-weight:bold; }
+
+main { padding:16px 20px 100px; }
+
+/* Upload */
+.upload-zone {
+  border:1.5px dashed var(--border-bright); border-radius:20px;
+  background:var(--surface); cursor:pointer; position:relative;
+  overflow:hidden; margin-top:16px; transition:all 0.3s;
+}
+.upload-zone:active { transform:scale(0.985); }
+.upload-zone::before {
+  content:''; position:absolute; top:0; left:-100%; width:100%; height:2px;
+  background:linear-gradient(90deg, transparent, var(--neon), transparent);
+  animation:scan-line 4s linear infinite;
+}
+@keyframes scan-line { to{left:200%;} }
+.upload-inner { padding:36px 24px; text-align:center; }
+.upload-icon-wrap { width:80px; height:80px; margin:0 auto 18px; position:relative; }
+.upload-icon-ring {
+  width:100%; height:100%; border:1.5px solid var(--border-bright); border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font-size:32px;
+  background:var(--surface2); position:relative; z-index:1;
+}
+.upload-icon-ring::before { content:''; position:absolute; inset:-6px; border:1px solid var(--border); border-radius:50%; }
+.upload-title { font-size:16px; font-weight:700; color:var(--text); margin-bottom:6px; }
+.upload-sub { font-size:12px; color:var(--text-dim); line-height:1.7; }
+.upload-cta {
+  margin-top:22px; display:inline-flex; align-items:center; gap:8px;
+  background:transparent; color:var(--neon); border:1.5px solid var(--neon);
+  border-radius:50px; padding:11px 24px; font-size:13px; font-weight:700;
+  font-family:var(--sans); cursor:pointer; transition:all 0.2s;
+  box-shadow:0 0 16px rgba(0,255,136,0.1);
+}
+#file-input { display:none; }
+
+.instruction-strip { margin-top:14px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+.inst-item { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 8px; text-align:center; }
+.inst-icon { font-size:22px; margin-bottom:6px; }
+.inst-text { font-size:10px; color:var(--text-dim); line-height:1.4; }
+
+/* Preview */
+.preview-wrap { display:none; margin-top:16px; border-radius:16px; overflow:hidden; border:1px solid var(--border-bright); background:var(--surface); }
+.preview-wrap.show { display:block; }
+.preview-wrap img { width:100%; max-height:240px; object-fit:cover; display:block; }
+.preview-bar { padding:10px 14px; display:flex; align-items:center; justify-content:space-between; font-size:11px; font-family:var(--mono); color:var(--text-dim); border-top:1px solid var(--border); }
+.retake { color:var(--neon); cursor:pointer; font-size:11px; }
+
+/* Scan btn */
+.scan-btn {
+  display:none; width:100%; margin-top:14px; padding:18px;
+  background:var(--neon); color:var(--bg); border:none; border-radius:16px;
+  font-size:15px; font-weight:900; font-family:var(--sans); cursor:pointer;
+  letter-spacing:0.5px; box-shadow:0 0 32px rgba(0,255,136,0.35), 0 8px 24px rgba(0,0,0,0.4);
+  transition:all 0.2s; align-items:center; justify-content:center; gap:10px;
+}
+.scan-btn.show { display:flex; }
+.scan-btn:active { transform:scale(0.98); }
+
+/* Loading */
+.loading-screen { display:none; margin-top:20px; background:var(--surface); border:1px solid var(--border-bright); border-radius:20px; padding:32px 24px; text-align:center; }
+.loading-screen.show { display:block; }
+.radar-wrap { width:100px; height:100px; margin:0 auto 24px; position:relative; }
+.radar-ring { position:absolute; inset:0; border:1px solid var(--border-bright); border-radius:50%; }
+.radar-ring:nth-child(2) { inset:14px; }
+.radar-ring:nth-child(3) { inset:28px; }
+.radar-sweep { position:absolute; inset:0; border-radius:50%; background:conic-gradient(from 0deg, transparent 0deg, rgba(0,255,136,0.4) 30deg, transparent 30deg); animation:sweep 1.5s linear infinite; }
+@keyframes sweep { to{transform:rotate(360deg);} }
+.radar-center { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:8px; height:8px; background:var(--neon); border-radius:50%; box-shadow:0 0 10px var(--neon); }
+.loading-title { font-size:14px; font-weight:700; color:var(--text); margin-bottom:6px; }
+.loading-step { font-family:var(--mono); font-size:11px; color:var(--neon); min-height:16px; }
+.loading-bar-bg { margin-top:16px; height:3px; background:var(--surface2); border-radius:2px; overflow:hidden; }
+.loading-bar-fill { height:100%; background:linear-gradient(90deg, var(--neon-dim), var(--neon)); border-radius:2px; width:0%; transition:width 0.4s ease; box-shadow:0 0 8px var(--neon); }
+
+/* Result */
+.result-wrap { display:none; margin-top:16px; }
+.result-wrap.show { display:block; animation:fadeUp 0.5s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(16px);} to{opacity:1;transform:translateY(0);} }
+
+.score-card { background:var(--surface); border:1px solid var(--border-bright); border-radius:20px; padding:24px 20px; margin-bottom:12px; position:relative; overflow:hidden; text-align:center; }
+.score-card::before { content:''; position:absolute; top:-40px; right:-40px; width:120px; height:120px; border-radius:50%; background:var(--neon-glow); filter:blur(30px); }
+.score-tag { font-family:var(--mono); font-size:10px; color:var(--text-dim); letter-spacing:2px; text-transform:uppercase; margin-bottom:14px; }
+.score-big { font-size:52px; font-weight:900; line-height:1; margin:12px 0 4px; text-shadow:0 0 30px currentColor; }
+.score-grade-badge { display:inline-block; padding:5px 18px; border-radius:50px; font-size:13px; font-weight:700; letter-spacing:1px; font-family:var(--mono); margin-bottom:10px; }
+.score-summary { font-size:13px; color:var(--text-dim); line-height:1.6; max-width:280px; margin:0 auto; }
+
+.g-A{color:#00ff88;} .badge-A{background:rgba(0,255,136,0.12);color:#00ff88;border:1px solid rgba(0,255,136,0.3);}
+.g-B{color:#7dff8a;} .badge-B{background:rgba(125,255,138,0.12);color:#7dff8a;border:1px solid rgba(125,255,138,0.3);}
+.g-C{color:#ffde59;} .badge-C{background:rgba(255,222,89,0.12);color:#ffde59;border:1px solid rgba(255,222,89,0.3);}
+.g-D{color:#ff9f1c;} .badge-D{background:rgba(255,159,28,0.12);color:#ff9f1c;border:1px solid rgba(255,159,28,0.3);}
+.g-F{color:#ff4d6d;} .badge-F{background:rgba(255,77,109,0.12);color:#ff4d6d;border:1px solid rgba(255,77,109,0.3);}
+
+.section-label { font-family:var(--mono); font-size:10px; color:var(--text-muted); letter-spacing:2px; text-transform:uppercase; margin:16px 0 8px; display:flex; align-items:center; gap:8px; }
+.section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+.alert-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; margin-bottom:12px; }
+.alert-item { display:flex; align-items:flex-start; gap:10px; padding:12px 16px; border-bottom:1px solid var(--border); font-size:12.5px; line-height:1.5; }
+.alert-item:last-child { border-bottom:none; }
+.alert-item.bad { border-left:3px solid var(--red); }
+.alert-item.warn { border-left:3px solid var(--orange); }
+.alert-item.good { border-left:3px solid var(--neon); }
+.alert-icon { font-size:16px; flex-shrink:0; margin-top:1px; }
+.alert-content { flex:1; }
+.alert-name { font-weight:700; color:var(--text); margin-bottom:2px; font-size:13px; }
+.alert-desc { color:var(--text-dim); font-size:11.5px; }
+
+.tag-cloud { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+.tag { padding:5px 12px; border-radius:50px; font-size:11px; font-weight:500; border:1px solid; }
+.tag-good { background:rgba(0,255,136,0.08); color:var(--neon); border-color:rgba(0,255,136,0.25); }
+.tag-warn { background:rgba(255,222,89,0.08); color:var(--yellow); border-color:rgba(255,222,89,0.25); }
+.tag-bad  { background:rgba(255,77,109,0.08); color:var(--red); border-color:rgba(255,77,109,0.25); }
+.tag-neutral { background:var(--surface2); color:var(--text-dim); border-color:var(--border); }
+
+.nutrition-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:16px; margin-bottom:12px; }
+.nut-item { margin-bottom:12px; }
+.nut-item:last-child { margin-bottom:0; }
+.nut-header { display:flex; justify-content:space-between; font-size:12px; margin-bottom:5px; }
+.nut-name { color:var(--text-dim); }
+.nut-val { font-family:var(--mono); color:var(--text); }
+.nut-bar-bg { height:5px; background:var(--surface2); border-radius:3px; overflow:hidden; }
+.nut-bar-fill { height:100%; border-radius:3px; transition:width 1.2s ease 0.3s; }
+.nut-bar-fill.low { background:var(--neon); box-shadow:0 0 6px rgba(0,255,136,0.5); }
+.nut-bar-fill.mid { background:var(--yellow); box-shadow:0 0 6px rgba(255,222,89,0.5); }
+.nut-bar-fill.high { background:var(--red); box-shadow:0 0 6px rgba(255,77,109,0.5); }
+
+.suggest-card { background:linear-gradient(135deg,#0d2018,#162019); border:1px solid var(--border-bright); border-radius:16px; padding:18px; margin-bottom:12px; }
+.suggest-title { font-size:12px; font-weight:700; color:var(--neon); font-family:var(--mono); letter-spacing:1px; margin-bottom:12px; text-transform:uppercase; }
+.suggest-item { display:flex; gap:10px; margin-bottom:8px; font-size:12.5px; color:var(--text-dim); line-height:1.5; }
+.suggest-item:last-child { margin-bottom:0; }
+.suggest-item .s-icon { color:var(--neon); flex-shrink:0; }
+
+.action-row { display:flex; gap:10px; margin-top:8px; }
+.btn-primary { flex:1; padding:14px; border-radius:12px; background:var(--neon); color:var(--bg); border:none; font-size:13px; font-weight:700; font-family:var(--sans); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.2s; box-shadow:0 0 20px rgba(0,255,136,0.25); }
+.btn-primary:active { transform:scale(0.97); }
+.btn-secondary { flex:1; padding:14px; border-radius:12px; background:transparent; color:var(--text); border:1px solid var(--border-bright); font-size:13px; font-weight:700; font-family:var(--sans); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.2s; }
+.btn-secondary:active { background:var(--surface2); }
+
+.error-card { display:none; margin-top:16px; background:rgba(255,77,109,0.06); border:1px solid rgba(255,77,109,0.3); border-radius:16px; padding:28px 20px; text-align:center; }
+.error-card.show { display:block; animation:fadeUp 0.3s ease; }
+.error-icon { font-size:36px; margin-bottom:12px; }
+.error-msg { font-size:13px; color:var(--text-dim); line-height:1.6; margin-bottom:16px; }
+.error-retry { background:transparent; color:var(--red); border:1px solid rgba(255,77,109,0.4); border-radius:50px; padding:10px 24px; font-size:13px; font-weight:700; font-family:var(--sans); cursor:pointer; }
+
+.footer { text-align:center; padding:20px; font-family:var(--mono); font-size:10px; color:var(--text-muted); letter-spacing:1px; }
+
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--border-bright); border-radius:2px; }
+</style>
+</head>
+<body>
+
+<!-- ══ SETUP SCREEN ══════════════════════════════════════════════════ -->
+<div id="setup-screen">
+  <div class="setup-logo">🛡️</div>
+  <div class="setup-title">食安雷达</div>
+  <div class="setup-sub">输入你的 Gemini API Key<br>即可免费无限次扫描配料表</div>
+
+  <div class="setup-card">
+    <label>GEMINI API KEY</label>
+    <div class="key-input-wrap">
+      <input type="password" id="api-key-input" placeholder="AIza..." autocomplete="off" spellcheck="false">
+      <button class="toggle-vis" onclick="toggleVis()" id="vis-btn">👁️</button>
+    </div>
+
+    <div class="setup-hint">
+      📌 <strong>免费申请步骤：</strong><br>
+      1. 打开 <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a><br>
+      2. 用 Google 账号登录<br>
+      3. 点击左上角 <strong>"Get API Key"</strong><br>
+      4. 点击 <strong>"Create API Key"</strong><br>
+      5. 复制粘贴到上方输入框<br><br>
+      ✅ 完全免费，每天可分析 <strong>1500次</strong>，无需信用卡
+    </div>
+
+    <button class="start-btn" id="start-btn" onclick="startApp()" disabled>
+      开始使用 →
+    </button>
+  </div>
+
+  <div class="privacy-note">
+    🔒 你的 API Key 只保存在你自己的手机/浏览器里<br>
+    不会上传到任何服务器，完全私密
+  </div>
+</div>
+
+<!-- ══ MAIN APP ═══════════════════════════════════════════════════════ -->
+<div id="app-screen">
+  <div class="header">
+    <div class="header-top">
+      <div class="logo">
+        <div class="logo-mark">🛡️</div>
+        <div>
+          <div class="logo-text">食安雷达</div>
+          <div class="logo-sub">FOOD SAFETY RADAR · GEMINI</div>
+        </div>
+      </div>
+      <div class="status-pill" onclick="changeKey()" title="点击更换Key">
+        <div class="status-dot"></div>
+        AI 在线
+      </div>
+    </div>
+    <div class="header-line"></div>
+  </div>
+
+  <div class="scan-counter">
+    <span>今日剩余免费次数</span>
+    <span class="counter-val" id="scan-count">∞</span>
+  </div>
+
+  <main>
+    <div id="upload-section">
+      <div class="upload-zone" id="upload-zone">
+        <label for="file-input" style="display:block;cursor:pointer;">
+          <div class="upload-inner">
+            <div class="upload-icon-wrap">
+              <div class="upload-icon-ring">📷</div>
+            </div>
+            <div class="upload-title">拍摄 / 上传配料表</div>
+            <div class="upload-sub">对准食品背面的 Ingredients 区域<br>拍照或从相册选取</div>
+            <div style="margin-top:22px;">
+              <span class="upload-cta">📸 &nbsp;选择照片</span>
+            </div>
+          </div>
+        </label>
+        <input type="file" id="file-input" accept="image/*" capture="environment">
+      </div>
+
+      <div class="instruction-strip">
+        <div class="inst-item"><div class="inst-icon">🔍</div><div class="inst-text">对准配料表<br>清晰拍摄</div></div>
+        <div class="inst-item"><div class="inst-icon">🤖</div><div class="inst-text">AI 自动<br>识别分析</div></div>
+        <div class="inst-item"><div class="inst-icon">📊</div><div class="inst-text">获得健康<br>评分报告</div></div>
+      </div>
+    </div>
+
+    <div class="preview-wrap" id="preview-wrap">
+      <img id="preview-img" src="" alt="">
+      <div class="preview-bar">
+        <span>📄 配料表图片已加载</span>
+        <span class="retake" onclick="resetAll()">重新拍摄</span>
+      </div>
+    </div>
+
+    <button class="scan-btn" id="scan-btn" onclick="startScan()">
+      🔍 &nbsp;开始 AI 健康分析
+    </button>
+
+    <div class="loading-screen" id="loading-screen">
+      <div class="radar-wrap">
+        <div class="radar-ring"></div>
+        <div class="radar-ring"></div>
+        <div class="radar-ring"></div>
+        <div class="radar-sweep"></div>
+        <div class="radar-center"></div>
+      </div>
+      <div class="loading-title">AI 正在分析配料表</div>
+      <div class="loading-step" id="loading-step">初始化雷达系统…</div>
+      <div class="loading-bar-bg"><div class="loading-bar-fill" id="loading-bar"></div></div>
+    </div>
+
+    <div class="error-card" id="error-card">
+      <div class="error-icon">⚠️</div>
+      <div class="error-msg" id="error-msg">无法识别配料表，请确保照片清晰。</div>
+      <button class="error-retry" onclick="resetAll()">重新上传</button>
+    </div>
+
+    <div class="result-wrap" id="result-wrap"></div>
+  </main>
+
+  <div class="footer">食安雷达 · Powered by Google Gemini · AI 分析仅供参考</div>
+</div>
+
+<script>
+// ── Storage ─────────────────────────────────────────────────────────
+const STORAGE_KEY = 'food_radar_gemini_key';
+let API_KEY = localStorage.getItem(STORAGE_KEY) || 'AIzaSyBbSWDp0sdQNE0A7GJseFLnitbD06AMVTI';
+let currentFile = null;
+let stepTimer, barTimer;
+
+// ── Init ─────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  // Key pre-loaded, go straight to app
+  showApp();
+  document.getElementById('api-key-input').addEventListener('input', e => {
+    const val = e.target.value.trim();
+    document.getElementById('start-btn').disabled = val.length < 20;
+  });
+});
+
+function toggleVis() {
+  const inp = document.getElementById('api-key-input');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function startApp() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (key.length < 20) return;
+  API_KEY = key;
+  localStorage.setItem(STORAGE_KEY, key);
+  showApp();
+}
+
+function showApp() {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'block';
+}
+
+function changeKey() {
+  if (confirm('重新输入 API Key？')) {
+    localStorage.removeItem(STORAGE_KEY);
+    API_KEY = '';
+    document.getElementById('setup-screen').style.display = 'flex';
+    document.getElementById('app-screen').style.display = 'none';
+    document.getElementById('api-key-input').value = '';
+    document.getElementById('start-btn').disabled = true;
+  }
+}
+
+// ── File input ────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('file-input').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    currentFile = file;
+    document.getElementById('preview-img').src = URL.createObjectURL(file);
+    document.getElementById('preview-wrap').classList.add('show');
+    document.getElementById('upload-section').style.display = 'none';
+    document.getElementById('scan-btn').classList.add('show');
+    document.getElementById('result-wrap').classList.remove('show');
+    document.getElementById('error-card').classList.remove('show');
+  });
+});
+
+function resetAll() {
+  currentFile = null;
+  document.getElementById('file-input').value = '';
+  document.getElementById('preview-wrap').classList.remove('show');
+  document.getElementById('upload-section').style.display = 'block';
+  document.getElementById('scan-btn').classList.remove('show');
+  document.getElementById('result-wrap').classList.remove('show');
+  document.getElementById('error-card').classList.remove('show');
+  document.getElementById('loading-screen').classList.remove('show');
+}
+
+// ── Loading animation ─────────────────────────────────────────────────
+const steps = ['识别图片中的文字…','提取配料表成分…','查询成分数据库…','评估健康风险…','生成分析报告…'];
+
+function startLoadingAnim() {
+  let i = 0, pct = 0;
+  document.getElementById('loading-bar').style.width = '0%';
+  document.getElementById('loading-step').textContent = steps[0];
+  stepTimer = setInterval(() => { i = Math.min(i+1, steps.length-1); document.getElementById('loading-step').textContent = steps[i]; }, 2000);
+  barTimer = setInterval(() => { pct = Math.min(pct + Math.random()*9, 88); document.getElementById('loading-bar').style.width = pct+'%'; }, 400);
+}
+function stopLoadingAnim() {
+  clearInterval(stepTimer); clearInterval(barTimer);
+  document.getElementById('loading-bar').style.width = '100%';
+}
+
+// ── Image to base64 ───────────────────────────────────────────────────
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+// ── Main scan ─────────────────────────────────────────────────────────
+async function startScan() {
+  if (!currentFile) return;
+
+  document.getElementById('scan-btn').classList.remove('show');
+  document.getElementById('error-card').classList.remove('show');
+  document.getElementById('result-wrap').classList.remove('show');
+  document.getElementById('loading-screen').classList.add('show');
+  startLoadingAnim();
+
+  try {
+    const b64 = await fileToBase64(currentFile);
+    const mimeType = currentFile.type || 'image/jpeg';
+
+    const prompt = `你是一个专业的食品营养分析师，专门帮助海外华人看懂英文食品配料表。
+
+请分析这张配料表图片，以严格JSON格式返回（只返回JSON，不要有任何其他文字或markdown）：
+
+{
+  "product_name": "根据图片推测的食品名称（中文，不确定写'未知食品'）",
+  "score": 75,
+  "grade": "B",
+  "grade_desc": "良好",
+  "summary": "一句话总结这个食品的健康状况（15-25字）",
+  "alerts": [
+    {"level": "bad", "name": "成分英文名", "name_cn": "成分中文名", "desc": "风险说明（15-25字）"}
+  ],
+  "positives": ["优点1（10-15字）", "优点2"],
+  "nutrition": {
+    "sugar": {"label": "含糖量", "level": "mid", "pct": 45, "note": "每100g约12g"},
+    "fat": {"label": "脂肪", "level": "low", "pct": 20, "note": "每100g约5g"},
+    "sodium": {"label": "钠含量", "level": "high", "pct": 75, "note": "每100g约600mg"},
+    "fibre": {"label": "膳食纤维", "level": "low", "pct": 30, "note": "每100g约3g"}
+  },
+  "suggestions": ["购买建议1（15-20字）", "购买建议2（15-20字）"],
+  "ingredient_tags": [
+    {"name": "全麦粉", "type": "good"},
+    {"name": "Sugar", "type": "warn"},
+    {"name": "Sodium Nitrite", "type": "bad"}
+  ]
+}
+
+评分：90-100=A极佳，75-89=B良好，60-74=C一般，40-59=D较差，0-39=F差
+level：low=绿色，mid=黄色，high=红色
+如果不是配料表或无法识别，返回：{"error": "无法识别"}`;
+
+    // Gemini API call
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { inline_data: { mime_type: mimeType, data: b64 } },
+              { text: prompt }
+            ]
+          }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 1500 }
+        })
+      }
+    );
+
+    const data = await response.json();
+    stopLoadingAnim();
+
+    // Handle API errors
+    if (data.error) {
+      if (data.error.code === 400 && data.error.message.includes('API_KEY')) {
+        showError('API Key 无效，请点击右上角"AI在线"按钮重新输入正确的 Key。');
+      } else {
+        showError(`API 错误：${data.error.message || '请稍后重试'}`);
+      }
+      return;
+    }
+
+    let raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    raw = raw.replace(/```json|```/g, '').trim();
+
+    // Extract JSON if wrapped in other text
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON found');
+    const result = JSON.parse(jsonMatch[0]);
+
+    if (result.error) {
+      showError('无法识别配料表，请确保清晰拍摄食品背面的 Ingredients 区域。');
+      return;
+    }
+
+    document.getElementById('loading-screen').classList.remove('show');
+    renderResult(result);
+
+  } catch(err) {
+    stopLoadingAnim();
+    document.getElementById('loading-screen').classList.remove('show');
+    console.error(err);
+    showError('分析失败，请检查网络连接，或确认 API Key 是否正确。');
+  }
+}
+
+function showError(msg) {
+  document.getElementById('loading-screen').classList.remove('show');
+  document.getElementById('error-msg').textContent = msg;
+  document.getElementById('error-card').classList.add('show');
+  document.getElementById('scan-btn').classList.add('show');
+}
+
+// ── Render result ─────────────────────────────────────────────────────
+function renderResult(r) {
+  const score = r.score ?? 0;
+  const grade = r.grade ?? 'F';
+  const radius = 44;
+  const circ = 2 * Math.PI * radius;
+  const offset = circ - (score / 100) * circ;
+  const gcolors = {A:'#00ff88',B:'#7dff8a',C:'#ffde59',D:'#ff9f1c',F:'#ff4d6d'};
+  const gcolor = gcolors[grade] || '#00ff88';
+
+  const alertHTML = (r.alerts||[]).map(a => `
+    <div class="alert-item ${a.level}">
+      <div class="alert-icon">${a.level==='bad'?'🚨':a.level==='warn'?'⚠️':'✅'}</div>
+      <div class="alert-content">
+        <div class="alert-name">${a.name_cn||a.name} <span style="font-size:10px;color:var(--text-muted);font-family:var(--mono)">${a.name}</span></div>
+        <div class="alert-desc">${a.desc}</div>
+      </div>
+    </div>`).join('');
+
+  const posHTML = (r.positives||[]).map(p => `
+    <div class="alert-item good">
+      <div class="alert-icon">✅</div>
+      <div class="alert-content"><div class="alert-desc">${p}</div></div>
+    </div>`).join('');
+
+  const tagHTML = (r.ingredient_tags||[]).map(t => `<span class="tag tag-${t.type}">${t.name}</span>`).join('');
+
+  const nutHTML = Object.values(r.nutrition||{}).map(n => `
+    <div class="nut-item">
+      <div class="nut-header"><span class="nut-name">${n.label}</span><span class="nut-val">${n.note}</span></div>
+      <div class="nut-bar-bg"><div class="nut-bar-fill ${n.level}" style="width:0%" data-target="${n.pct}%"></div></div>
+    </div>`).join('');
+
+  const sugHTML = (r.suggestions||[]).map(s => `
+    <div class="suggest-item"><span class="s-icon">→</span><span>${s}</span></div>`).join('');
+
+  const html = `
+    <div class="score-card">
+      <div class="score-tag">${r.product_name||'食品'} · 综合健康评分</div>
+      <svg width="110" height="110" viewBox="0 0 110 110" style="display:block;margin:0 auto;">
+        <circle cx="55" cy="55" r="${radius}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>
+        <circle cx="55" cy="55" r="${radius}" fill="none" stroke="${gcolor}" stroke-width="10"
+          stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${circ}"
+          id="score-arc" style="transform:rotate(-90deg);transform-origin:center;transition:stroke-dashoffset 1.4s ease 0.2s;"/>
+      </svg>
+      <div class="score-big g-${grade}" style="color:${gcolor}">${score}</div>
+      <div class="score-grade-badge badge-${grade}">${r.grade_desc||grade} 级</div>
+      <div class="score-summary">${r.summary||''}</div>
+    </div>
+
+    ${tagHTML ? `<div class="section-label">成分总览</div><div class="tag-cloud">${tagHTML}</div>` : ''}
+    ${alertHTML ? `<div class="section-label">⚠️ 需要注意的成分</div><div class="alert-card">${alertHTML}</div>` : ''}
+    ${posHTML ? `<div class="section-label">✅ 营养亮点</div><div class="alert-card">${posHTML}</div>` : ''}
+
+    <div class="section-label">营养指标</div>
+    <div class="nutrition-card">${nutHTML}</div>
+
+    ${sugHTML ? `<div class="suggest-card"><div class="suggest-title">🛒 AI 购买建议</div>${sugHTML}</div>` : ''}
+
+    <div class="action-row">
+      <button class="btn-primary" onclick="shareResult()">📤 分享给朋友</button>
+      <button class="btn-secondary" onclick="resetAll()">🔄 再扫一个</button>
+    </div>`;
+
+  const wrap = document.getElementById('result-wrap');
+  wrap.innerHTML = html;
+  wrap.classList.add('show');
+
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      const arc = document.getElementById('score-arc');
+      if (arc) arc.style.strokeDashoffset = offset;
+      wrap.querySelectorAll('.nut-bar-fill[data-target]').forEach(b => { b.style.width = b.dataset.target; });
+    }, 100);
+  });
+  wrap.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function shareResult() {
+  if (navigator.share) {
+    navigator.share({ title:'食安雷达', text:'我刚用AI分析了一款食品的配料表！', url: window.location.href });
+  } else {
+    navigator.clipboard?.writeText(window.location.href).then(() => alert('链接已复制！'));
+  }
+}
+</script>
+</body>
+</html>
